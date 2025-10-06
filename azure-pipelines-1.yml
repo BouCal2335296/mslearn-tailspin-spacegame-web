@@ -1,32 +1,45 @@
-# ASP.NET Core
-# Build and test ASP.NET Core projects targeting .NET Core.
-# Add steps that run tests, create a NuGet package, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
-
 trigger:
-  - main
+- main
+
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'windows-latest'
 
 variables:
   buildConfiguration: 'Release'
+  wwwrootDir: 'Tailspin.SpaceGame.Web/wwwroot'
+  dotnetSdkVersion: '6.x'
 
 steps:
-- script: dotnet build --configuration $(buildConfiguration)
-  displayName: 'dotnet build $(buildConfiguration)'
-
-# 1️⃣ Tâche pour publier et empaqueter les résultats dans un .zip
-- task: DotNetCoreCLI@2
-  displayName: 'dotnet publish'
+# Étape 1 : Installation du SDK .NET
+- task: UseDotNet@2
+  displayName: 'Install .NET SDK $(dotnetSdkVersion)'
   inputs:
-    command: 'publish'
-    publishWebProjects: true
-    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
-    zipAfterPublish: true
+    packageType: 'sdk'
+    version: '$(dotnetSdkVersion)'
 
-# 2️⃣ Tâche pour publier le .zip comme artefact de build
+# Étape 2 : Restauration des dépendances
+- script: dotnet restore
+  displayName: 'Restore dependencies'
+
+# Étape 3 : Build du projet avec la configuration spécifiée
+- script: dotnet build --configuration $(buildConfiguration) --no-restore
+  displayName: 'Build project ($(buildConfiguration))'
+
+# Étape 4 : Exécution des tests
+- script: dotnet test --configuration $(buildConfiguration) --no-build --verbosity normal
+  displayName: 'Run unit tests'
+
+# Étape 5 : Compilation des fichiers Sass en CSS
+- script: './node_modules/.bin/node-sass $(wwwrootDir) --output $(wwwrootDir)'
+  displayName: 'Compile Sass assets ($(wwwrootDir))'
+
+# Étape 6 : Publication des artefacts
+- script: dotnet publish --configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)
+  displayName: 'Publish project ($(buildConfiguration))'
+
+# Étape 7 : Téléversement de l’artefact de build
 - task: PublishBuildArtifacts@1
-  condition: succeeded()
+  displayName: 'Upload artifact'
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
