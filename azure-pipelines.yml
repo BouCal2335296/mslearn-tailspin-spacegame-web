@@ -5,31 +5,29 @@
 
 trigger:
   - main
-  
-  pool:
-    vmImage: ubuntu-latest
-  
-  variables:
-    buildConfiguration: 'Release'
-  
-  steps:
-  - script: dotnet build --configuration $(buildConfiguration)
-    displayName: 'dotnet build $(buildConfiguration)'
-  
-  # 1️⃣ Tâche pour publier et empaqueter les résultats dans un .zip
-  - task: DotNetCoreCLI@2
-    displayName: 'dotnet publish'
-    inputs:
-      command: 'publish'
-      publishWebProjects: true
-      arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
-      zipAfterPublish: true
-  
-  # 2️⃣ Tâche pour publier le .zip comme artefact de build
-  - task: PublishBuildArtifacts@1
-    condition: succeeded()
-    inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'drop'
-      publishLocation: 'Container'
-  
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+- script: dotnet build --configuration $(buildConfiguration)
+  displayName: 'dotnet build $(buildConfiguration)'
+
+# 1️⃣ Tâche pour publier et empaqueter les résultats dans un .zip
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet publish'
+  inputs:
+    command: 'publish'
+    publishWebProjects: true
+    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+    zipAfterPublish: true
+
+# 2️⃣ Tâche pour publier le .zip comme artefact de build
+- task: PublishBuildArtifacts@1
+  condition: succeeded()
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
