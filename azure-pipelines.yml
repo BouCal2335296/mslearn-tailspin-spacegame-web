@@ -1,8 +1,4 @@
 # ASP.NET Core
-# Build and test ASP.NET Core projects targeting .NET Core.
-# Add steps that run tests, create a NuGet package, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
-
 trigger:
 - main
 
@@ -13,5 +9,38 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
+# 1) Restore (si nécessaire)
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet restore'
+  inputs:
+    command: 'restore'
+    projects: '**/*.csproj'
+
+# 2) Build
 - script: dotnet build --configuration $(buildConfiguration)
   displayName: 'dotnet build $(buildConfiguration)'
+
+# 3) Publish (génère les fichiers publiés + zip)
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet publish and zip'
+  inputs:
+    command: 'publish'                     # -> IMPORTANT : 'command' (pas 'commands')
+    publishWebProjects: true               # publie les projets web trouvés
+    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+    zipAfterPublish: true                  # produit un .zip des résultats publiés
+
+# 4) Publier l'artifact (ancienne façon : PublishBuildArtifacts@1)
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish build artifacts (legacy)'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'  # dossier contenant les .zip ou les fichiers publiés
+    ArtifactName: 'drop'                                # nom de l'artifact dans l'interface Azure DevOps
+    publishLocation: 'Container'
+
+# -- OU (recommandé pour Azure DevOps Services) utiliser PublishPipelineArtifact (meilleure perf)
+# - task: PublishPipelineArtifact@1
+#   displayName: 'Publish pipeline artifact (recommended)'
+#   inputs:
+#     targetPath: '$(Build.ArtifactStagingDirectory)'
+#     artifact: 'drop'
+#     publishLocation: 'pipeline'
