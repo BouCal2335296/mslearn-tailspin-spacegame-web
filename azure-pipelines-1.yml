@@ -1,17 +1,45 @@
-# ASP.NET Core
-# Build and test ASP.NET Core projects targeting .NET Core.
-# Add steps that run tests, create a NuGet package, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+- stage: Deploy_Dev
+  displayName: "Deploy to Dev"
+  dependsOn: Build
+  jobs:
+    - deployment: Deploy
+      pool:
+        vmImage: "ubuntu-20.04"
+      environment: dev
+      variables:
+        - group: Release
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - download: current
+                artifact: drop
+              - task: AzureWebApp@1
+                displayName: "Azure App Service Deploy: website"
+                inputs:
+                  azureSubscription: "Resource Manager - Tailspin - Space Game"
+                  appName: "$(WebAppNameDev)"
+                  package: "$(Pipeline.Workspace)/drop/*.zip"
 
-trigger:
-- main
-
-pool:
-  vmImage: ubuntu-latest
-
-variables:
-  buildConfiguration: 'Release'
-
-steps:
-- script: dotnet build --configuration $(buildConfiguration)
-  displayName: 'dotnet build $(buildConfiguration)'
+- stage: Deploy_Staging
+  displayName: "Deploy to Staging"
+  dependsOn: Deploy_Dev
+  jobs:
+    - deployment: Deploy
+      pool:
+        vmImage: "ubuntu-20.04"
+      environment: staging
+      variables:
+        - group: Release
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - download: current
+                artifact: drop
+              - task: AzureWebApp@1
+                displayName: "Azure App Service Deploy: website"
+                inputs:
+                  azureSubscription: "Resource Manager - Tailspin - Space Game"
+                  appName: "$(WebAppNameStaging)"
+                  package: "$(Pipeline.Workspace)/drop/*.zip"
